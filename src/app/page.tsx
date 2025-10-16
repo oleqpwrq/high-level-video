@@ -321,7 +321,7 @@ type WorkItem = {
 
 const WORKS: WorkItem[] = [
   {
-    title: "Brand Film — Aurora",
+    title: "Корпоративное видео — Aurora",
     href: "#",
     poster: "/work/aurora/poster.jpg",
     srcHevc1080: "/work/aurora/1080p-h265.mp4",
@@ -330,7 +330,7 @@ const WORKS: WorkItem[] = [
     srcWebm: "/work/aurora/1080p.webm",
   },
   {
-    title: "Product Ad — Nova",
+    title: "Товарная реклама — Nova",
     href: "#",
     poster: "/work/nova/poster.jpg",
     srcHevc1080: "/work/nova/1080p-h265.mp4",
@@ -339,7 +339,7 @@ const WORKS: WorkItem[] = [
     srcWebm: "/work/nova/1080p.webm",
   },
   {
-    title: "Event Recap — Pulse",
+    title: "Рендер товаров — Pulse",
     href: "#",
     poster: "/work/pulse/poster.jpg",
     srcHevc1080: "/work/pulse/1080p-h265.mp4",
@@ -423,7 +423,7 @@ export default function HighLevelVideoLanding() {
             </motion.p>
             <motion.div variants={item} className="mt-7 flex flex-wrap items-center gap-3">
               <Button asChild className="rounded-2xl bg-white text-black hover:bg-white/90">
-                <a href="#work"><Play className="mr-2 h-4 w-4" /> Смотреть шоурил</a>
+                <a href="#work"><Play className="mr-2 h-4 w-4" /> Смотреть</a>
               </Button>
               <Button asChild variant="outline" className="rounded-2xl border-white/20 bg-white/5 text-white hover:bg-white/10">
                 <a href="#contact">Обсудить проект <ArrowRight className="ml-2 h-4 w-4" /></a>
@@ -454,7 +454,7 @@ export default function HighLevelVideoLanding() {
                   <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
                   <div className="absolute bottom-4 left-4 flex items-center gap-3">
                     <div className="rounded-full bg-white/90 p-2 text-black"><Play className="h-4 w-4" /></div>
-                    <span className="text-sm text-white/80">Шоурил High Level Video</span>
+                    <span className="text-sm text-white/80">High Level Video</span>
                   </div>
                 </div>
               </CardContent>
@@ -466,7 +466,7 @@ export default function HighLevelVideoLanding() {
       {/* Logos */}
       <section className="border-y border-white/10 bg-white/5 py-8">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-10 px-4 opacity-80">
-          {["Яндекс", "Сбер", "Avito", "Gazprom", "VK", "Wildberries"].map((brand) => (
+          {["Smart Group", "Istanbul City", "EugAuto", "ФПК Правда", "Жарка", "ГК Родина"].map((brand) => (
             <div key={brand} className="text-sm uppercase tracking-widest text-white/60">{brand}</div>
           ))}
         </div>
@@ -481,7 +481,7 @@ export default function HighLevelVideoLanding() {
             {[
               { icon: <Camera className="h-5 w-5" />, title: "Рекламные ролики", text: "ТВ/OLV кампании, перформанс-креативы, вертикальные форматы." },
               { icon: <Film className="h-5 w-5" />, title: "Бренд-видео", text: "Имиджевые, корпоративные, HR и event-фильмы." },
-              { icon: <Sparkles className="h-5 w-5" />, title: "CGI & Моушн", text: "3D, product renders, объясняющие и UI-анимации." },
+              { icon: <Sparkles className="h-5 w-5" />, title: "CGI & Моушн", text: "3D, продуктовые рендеры, объясняющие и UI-анимации." },
               { icon: <Play className="h-5 w-5" />, title: "Контент для соцсетей", text: "Вертикальные короткие форматы, клипы, UGC-постановка." },
               { icon: <ArrowRight className="h-5 w-5" />, title: "Видеокейсы", text: "Истории проектов с метриками, инсайтами и результатами." },
               { icon: <Check className="h-5 w-5" />, title: "Под ключ", text: "Креатив, продакшен, кастинг, локации, лицензии, права." },
@@ -577,7 +577,7 @@ export default function HighLevelVideoLanding() {
           <motion.h2 variants={item} className="text-white text-3xl font-semibold md:text-4xl">О нас</motion.h2>
           <div className="mt-8 grid grid-cols-1 items-center gap-10 md:grid-cols-3">
             <div className="md:col-span-2">
-              <p className="text-white/70 md:text-lg">High Level Video — команда продюсеров, режиссёров и креативных, которая делает видео, решающее бизнес-задачи. Мы за скорость, качество и кристальную коммуникацию.</p>
+              <p className="text-white/70 md:text-lg">High Level Video — команда продюсеров, режиссёров и креативных специалистов, которая делает видео, решающее бизнес-задачи. Мы за скорость, качество и кристальную коммуникацию.</p>
               <div className="mt-6 grid grid-cols-2 gap-4 md:max-w-lg">
                 {[["50+", "реализованных проектов"], ["12", "постоянных специалистов"], ["24/7", "сопровождение запусков"], ["A+", "оценка клиентов"]].map(([n, l]) => (
                   <Card key={l} className="border-white/10 bg-white/5 transform-gpu transition duration-300 hover:-translate-y-1">
