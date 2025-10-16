@@ -641,7 +641,7 @@ export default function HighLevelVideoLanding() {
             <motion.h2 variants={item} className="text-white text-3xl font-semibold md:text-4xl">О нас</motion.h2>
             <div className="mt-8 grid grid-cols-1 items-center gap-10 md:grid-cols-3">
               <div className="md:col-span-2">
-                <p className="text-white/70 md:text-lg">High Level Video — команда продюсеров, режиссёров и креативных специалистов, которая делает видео, решающее бизнес-задачи. Мы за скорость, качество и кристальную коммуникацию.</p>
+                <p className="text-white/70 md:text-lg">High Level Video — команда продюсеров, режиссёров и креативных специалистов, которая создает видео, решающее бизнес-задачи и не только. Мы за скорость, качество и кристальную коммуникацию.</p>
                 <div className="mt-6 grid grid-cols-2 gap-4 md:max-w-lg">
                   {[ ["50+", "реализованных проектов"], ["12", "постоянных специалистов"], ["24/7", "сопровождение запусков"], ["A+", "оценка клиентов"] ].map(([n, l]) => (
                     <Card key={l} className="border-white/10 bg-white/5 transform-gpu transition duration-300 hover:-translate-y-1">
