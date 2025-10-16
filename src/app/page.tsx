@@ -12,20 +12,21 @@ import { Card, CardContent } from "@/components/ui/card";
 // ------------------------------------------------------------------
 
 type VideoSmartProps = {
-  className?: string;
-  poster?: string;
-  srcMp41080: string;
+  className?: string;  srcMp41080: string;
   srcMp4720: string;
   srcHevc1080?: string; // optional (HEVC)
   srcWebm?: string;     // optional (WebM)
   autoPlay?: boolean;
   loop?: boolean;
   muted?: boolean;
+  /** На мобилках сначала грузить 720p */
+  mobilePrefer720?: boolean;
+  /** Ограничить автоплей на мобилках/медленной сети */
+  limitAutoplayOnMobile?: boolean;
 };
 
 function VideoSmart({
   className,
-  poster,
   srcMp41080,
   srcMp4720,
   srcHevc1080,
@@ -33,8 +34,29 @@ function VideoSmart({
   autoPlay = true,
   loop = true,
   muted = true,
+  mobilePrefer720 = true,
+  limitAutoplayOnMobile = true,
 }: VideoSmartProps) {
   const ref = useRef<HTMLVideoElement | null>(null);
+  const [shouldAutoplay, setShouldAutoplay] = useState<boolean>(autoPlay);
+  const [preloadMode, setPreloadMode] = useState<"none" | "metadata">("none");
+
+  // Решаем, как вести себя на мобилке/медленной сети
+  useEffect(() => {
+    const isMobile = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(max-width: 768px)").matches;
+    // @ts-ignore
+    const conn = typeof navigator !== "undefined" && (navigator as any).connection;
+    const saveData = !!(conn && conn.saveData);
+    const slow = conn && (conn.effectiveType === "slow-2g" || conn.effectiveType === "2g");
+
+    if (limitAutoplayOnMobile && (isMobile || saveData || slow)) {
+      setShouldAutoplay(false); // на мобилках — без автоплея для экономии трафика
+      setPreloadMode("metadata");
+    } else {
+      setShouldAutoplay(autoPlay);
+      setPreloadMode("none");
+    }
+  }, [autoPlay, limitAutoplayOnMobile]);
 
   useEffect(() => {
     const el = ref.current;
@@ -43,8 +65,8 @@ function VideoSmart({
     const onIntersect: IntersectionObserverCallback = (entries) => {
       for (const ent of entries) {
         if (ent.isIntersecting) {
-          el.preload = "metadata";
-          if (autoPlay && el.paused) {
+          el.preload = preloadMode;
+          if (shouldAutoplay && el.paused) {
             el.play().catch(() => {});
           }
         } else {
@@ -53,10 +75,15 @@ function VideoSmart({
       }
     };
 
-    const io = new IntersectionObserver(onIntersect, { rootMargin: "200px" });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [autoPlay]);
+    if (typeof window !== "undefined" && "IntersectionObserver" in window) {
+      const io = new IntersectionObserver(onIntersect, { rootMargin: "200px" });
+      io.observe(el);
+      return () => io.disconnect();
+    }
+    // Fallback: просто попытаться проиграть
+    try { if (shouldAutoplay) ref.current?.play().catch(() => {}); } catch {}
+    return () => void 0;
+  }, [shouldAutoplay, preloadMode]);
 
   return (
     <video
@@ -65,16 +92,18 @@ function VideoSmart({
       playsInline
       muted={muted}
       loop={loop}
-      autoPlay={autoPlay}
-      preload="none"
-      poster={poster}
-      disablePictureInPicture
+      autoPlay={shouldAutoplay}
+      preload={preloadMode}      disablePictureInPicture
       controls={false}
     >
-      {srcHevc1080 ? <source src={srcHevc1080} type="video/mp4; codecs=hev1" /> : null}
-      <source src={srcMp41080} type="video/mp4" />
-      <source src={srcMp4720} type="video/mp4" />
-      {srcWebm ? <source src={srcWebm} type="video/webm" /> : null}
+      {/* Сначала более лёгкий источник для мобилок */}
+      {mobilePrefer720 && <source media="(max-width: 768px)" src={srcMp4720} type="video/mp4" />}
+      {/* HEVC для iOS/современных устройств (1080p) */}
+      {srcHevc1080 ? <source media="(min-width: 769px)" src={srcHevc1080} type="video/mp4; codecs=hev1" /> : null}
+      {/* Fallback 1080p H.264 */}
+      <source media="(min-width: 769px)" src={srcMp41080} type="video/mp4" />
+      {/* WebM как дополнительный вариант */}
+      {srcWebm ? <source media="(min-width: 769px)" src={srcWebm} type="video/webm" /> : null}
       Ваш браузер не поддерживает воспроизведение видео.
     </video>
   );
@@ -311,9 +340,7 @@ const PriceGroup: React.FC<PriceGroupProps> = ({ title, items, defaultOpen = fal
 
 type WorkItem = {
   title: string;
-  href: string;
-  poster: string;
-  srcMp41080: string;
+  href: string;  srcMp41080: string;
   srcMp4720: string;
   srcHevc1080?: string;
   srcWebm?: string;
@@ -322,27 +349,21 @@ type WorkItem = {
 const WORKS: WorkItem[] = [
   {
     title: "Корпоративное видео — Aurora",
-    href: "#",
-    poster: "/work/aurora/poster.jpg",
-    srcHevc1080: "/work/aurora/1080p-h265.mp4",
+    href: "#",    srcHevc1080: "/work/aurora/1080p-h265.mp4",
     srcMp41080: "/work/aurora/1080p.mp4",
     srcMp4720: "/work/aurora/720p.mp4",
     srcWebm: "/work/aurora/1080p.webm",
   },
   {
     title: "Товарная реклама — Nova",
-    href: "#",
-    poster: "/work/nova/poster.jpg",
-    srcHevc1080: "/work/nova/1080p-h265.mp4",
+    href: "#",    srcHevc1080: "/work/nova/1080p-h265.mp4",
     srcMp41080: "/work/nova/1080p.mp4",
     srcMp4720: "/work/nova/720p.mp4",
     srcWebm: "/work/nova/1080p.webm",
   },
   {
     title: "Рендер товаров — Pulse",
-    href: "#",
-    poster: "/work/pulse/poster.jpg",
-    srcHevc1080: "/work/pulse/1080p-h265.mp4",
+    href: "#",    srcHevc1080: "/work/pulse/1080p-h265.mp4",
     srcMp41080: "/work/pulse/1080p.mp4",
     srcMp4720: "/work/pulse/720p.mp4",
     srcWebm: "/work/pulse/1080p.webm",
@@ -350,8 +371,33 @@ const WORKS: WorkItem[] = [
 ];
 
 // -----------------------------
-// Page
+// Page + ErrorBoundary
 // -----------------------------
+
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; msg?: string }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError(err: unknown) {
+    return { hasError: true, msg: (err as Error)?.message };
+  }
+  componentDidCatch(err: unknown) { if (typeof window !== 'undefined') console.error(err); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-black text-white flex items-center justify-center p-6">
+          <div className="max-w-lg text-center">
+            <h1 className="text-2xl font-semibold">Упс, что-то пошло не так</h1>
+            <p className="mt-2 text-white/70">Страница не загрузилась из‑за ошибки в интерфейсе. Мы уже записали её в консоль.</p>
+            {this.state.msg && <p className="mt-2 text-xs text-white/50">{this.state.msg}</p>}
+          </div>
+        </div>
+      );
+    }
+    return this.props.children as React.ReactElement;
+  }
+}
 
 export default function HighLevelVideoLanding() {
   // Brief form state & send-to-email
@@ -392,10 +438,10 @@ export default function HighLevelVideoLanding() {
       {/* Nav */}
       <nav className="sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-black/40">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
-          <motion.a href="#top" className="flex items-center gap-2" variants={item}>
+          <a href="#top" className="flex items-center gap-2">
             <img src="/logo.png" alt="High Level Video" className="h-7 w-auto" />
             <span className="text-white font-semibold tracking-tight">High Level Video</span>
-          </motion.a>
+          </a>
           <div className="hidden items-center gap-8 md:flex">
             {NAV_LINKS.map(([label, href]) => (
               <a key={href} href={href} className="text-sm text-white/80 transition hover:text-white">
@@ -444,17 +490,17 @@ export default function HighLevelVideoLanding() {
               <CardContent className="p-0">
                 <div className="relative aspect-video w-full">
                   <VideoSmart
-                    className="h-full w-full object-cover"
-                    poster="/hero/poster.jpg"
-                    srcHevc1080="/reel-1080p-h265.mp4"
+                    className="h-full w-full object-cover"                    srcHevc1080="/reel-1080p-h265.mp4"
                     srcMp41080="/reel-1080p.mp4"
                     srcMp4720="/reel-720p.mp4"
                     srcWebm="/reel.webm"
+                    mobilePrefer720
+                    limitAutoplayOnMobile={false} // у шоурила автоплей всегда
                   />
                   <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
                   <div className="absolute bottom-4 left-4 flex items-center gap-3">
                     <div className="rounded-full bg-white/90 p-2 text-black"><Play className="h-4 w-4" /></div>
-                    <span className="text-sm text-white/80">High Level Video</span>
+                    <span className="text-sm text-white/80">Шоурил High Level Video</span>
                   </div>
                 </div>
               </CardContent>
@@ -525,12 +571,12 @@ export default function HighLevelVideoLanding() {
             {WORKS.map((w) => (
               <a key={w.title} href={w.href} className="group relative block overflow-hidden rounded-3xl border border-white/10 bg-white/5 text-white transform-gpu transition duration-300 hover:-translate-y-1">
                 <VideoSmart
-                  className="aspect-video w-full object-cover transition duration-500 group-hover:scale-105"
-                  poster={w.poster}
-                  srcHevc1080={w.srcHevc1080}
+                  className="aspect-video w-full object-cover transition duration-500 group-hover:scale-105"                  srcHevc1080={w.srcHevc1080}
                   srcMp41080={w.srcMp41080}
                   srcMp4720={w.srcMp4720}
                   srcWebm={w.srcWebm}
+                  mobilePrefer720
+                  limitAutoplayOnMobile // кейсы не автоплеим на слабых сетях/мобилках
                 />
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 p-5">
@@ -577,7 +623,7 @@ export default function HighLevelVideoLanding() {
           <motion.h2 variants={item} className="text-white text-3xl font-semibold md:text-4xl">О нас</motion.h2>
           <div className="mt-8 grid grid-cols-1 items-center gap-10 md:grid-cols-3">
             <div className="md:col-span-2">
-              <p className="text-white/70 md:text-lg">High Level Video — команда продюсеров, режиссёров и креативных специалистов, которая делает видео, решающее бизнес-задачи. Мы за скорость, качество и кристальную коммуникацию.</p>
+              <p className="text-white/70 md:text-lg">High Level Video — команда продюсеров, режиссёров и креативных специалистов, которая продюсирует, создает и монтирует видео, решающее бизнес-задачи и не только. Мы за скорость, качество и кристальную коммуникацию.</p>
               <div className="mt-6 grid grid-cols-2 gap-4 md:max-w-lg">
                 {[["50+", "реализованных проектов"], ["12", "постоянных специалистов"], ["24/7", "сопровождение запусков"], ["A+", "оценка клиентов"]].map(([n, l]) => (
                   <Card key={l} className="border-white/10 bg-white/5 transform-gpu transition duration-300 hover:-translate-y-1">
@@ -593,11 +639,11 @@ export default function HighLevelVideoLanding() {
               <Card className="overflow-hidden border-white/10 bg-white/5">
                 <CardContent className="p-0">
                   <picture>
-  {/* PNG первым — чтобы точно подхватился, даже если WEBP отсутствует */}
-  <source srcSet="/about/poster.png" type="image/png" />
-  <source srcSet="/about/poster.webp" type="image/webp" />
-  <img src="/about/poster.png" alt="High Level Video — команда" className="h-full w-full object-cover" />
-</picture>
+                    {/* PNG первым — чтобы точно подхватился, даже если WEBP отсутствует */}
+                    <source srcSet="/about/poster.png" type="image/png" />
+                    <source srcSet="/about/poster.webp" type="image/webp" />
+                    <img src="/about/poster.png" alt="High Level Video — команда" className="h-full w-full object-cover" />
+                  </picture>
                 </CardContent>
               </Card>
             </div>
