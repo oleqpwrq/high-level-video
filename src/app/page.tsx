@@ -45,8 +45,7 @@ function VideoSmart({
         if (ent.isIntersecting) {
           el.preload = "metadata";
           if (autoPlay && el.paused) {
-            const p = el.play();
-            if (p && typeof (p as any).then === "function") (p as any).catch(() => {});
+            el.play().catch(() => {});
           }
         } else {
           if (!el.paused) el.pause();
@@ -594,7 +593,7 @@ export default function HighLevelVideoLanding() {
               <Card className="overflow-hidden border-white/10 bg-white/5">
                 <CardContent className="p-0">
                   <picture>
-                    <source srcSet="/about/poster.png" type="image/png" />
+                    <source srcSet="/about/poster.webp" type="image/webp" />
                     <source srcSet="/about/poster.png" type="image/png" />
                     <img src="/about/poster.jpg" alt="High Level Video — команда" className="h-full w-full object-cover" />
                   </picture>
