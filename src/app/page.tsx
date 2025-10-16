@@ -1,16 +1,91 @@
-'use client';
-import React, { useEffect, useState } from "react";
+"use client";
+
+import React, { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import type { Variants } from "framer-motion";
 import { Play, ArrowRight, Camera, Film, Sparkles, Check, Instagram, Youtube, Mail, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
+// ------------------------------------------------------------------
+// Smart <video/> with multiple sources (iOS friendly, autoplay/inline)
+// ------------------------------------------------------------------
+
+type VideoSmartProps = {
+  className?: string;
+  poster?: string;
+  srcMp41080: string;
+  srcMp4720: string;
+  srcHevc1080?: string; // optional (HEVC)
+  srcWebm?: string;     // optional (WebM)
+  autoPlay?: boolean;
+  loop?: boolean;
+  muted?: boolean;
+};
+
+function VideoSmart({
+  className,
+  poster,
+  srcMp41080,
+  srcMp4720,
+  srcHevc1080,
+  srcWebm,
+  autoPlay = true,
+  loop = true,
+  muted = true,
+}: VideoSmartProps) {
+  const ref = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const onIntersect: IntersectionObserverCallback = (entries) => {
+      for (const ent of entries) {
+        if (ent.isIntersecting) {
+          el.preload = "metadata";
+          if (autoPlay && el.paused) {
+            const p = el.play();
+            if (p && typeof (p as any).then === "function") (p as any).catch(() => {});
+          }
+        } else {
+          if (!el.paused) el.pause();
+        }
+      }
+    };
+
+    const io = new IntersectionObserver(onIntersect, { rootMargin: "200px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [autoPlay]);
+
+  return (
+    <video
+      ref={ref}
+      className={className}
+      playsInline
+      muted={muted}
+      loop={loop}
+      autoPlay={autoPlay}
+      preload="none"
+      poster={poster}
+      disablePictureInPicture
+      controls={false}
+    >
+      {srcHevc1080 ? <source src={srcHevc1080} type="video/mp4; codecs=hev1" /> : null}
+      <source src={srcMp41080} type="video/mp4" />
+      <source src={srcMp4720} type="video/mp4" />
+      {srcWebm ? <source src={srcWebm} type="video/webm" /> : null}
+      Ваш браузер не поддерживает воспроизведение видео.
+    </video>
+  );
+}
+
 // -----------------------------
 // Data & simple dev-time checks
 // -----------------------------
-// Types used below
- type NavLink = [string, string];
+
+type NavLink = [string, string];
 const NAV_LINKS: NavLink[] = [
   ["Услуги", "#services"],
   ["Прайс", "#pricing"],
@@ -21,50 +96,57 @@ const NAV_LINKS: NavLink[] = [
   ["Контакты", "#contact"],
 ];
 
-// Полный перечень позиций из прайса (разбивка по разделам)
-const PRICE_GROUPS = [
+// Показывать соцсети (Instagram/YouTube) в блоке контактов
+const SHOW_SOCIALS = false;
+
+// Full price groups (7 sections)
+
+type PriceItem = { title: string; unit: string; price: string };
+type PriceGroupT = { title: string; items: PriceItem[] };
+
+const PRICE_GROUPS: PriceGroupT[] = [
   {
     title: "Рекламные ролики",
     items: [
       { title: "ТВ-реклама", unit: "под ключ", price: "от 200 000 ₽" },
-      { title: "OLV / Digital Spot (15–30 сек.)", unit: "YouTube/CTV/соцсети", price: "65 000–130 000 ₽" },
-      { title: "Performance-креативы", unit: "массовые видео для тестов/ротаций", price: "13 000–40 000 ₽" },
+      { title: "OLV / Digital Spot (15-30 сек.)", unit: "YouTube/CTV/соцсети", price: "65 000-130 000 ₽" },
+      { title: "Performance-креативы", unit: "массовые видео для тестов/ротаций", price: "13 000-40 000 ₽" },
       { title: "Вертикальные форматы (Reels/Shorts/TikTok)", unit: "пакет", price: "10 000 ₽ / 5 шт." },
     ],
   },
   {
-    title: "Бренд‑видео",
+    title: "Бренд-видео",
     items: [
-      { title: "Имиджевый ролик", unit: "под ключ", price: "100 000–250 000 ₽" },
-      { title: "Корпоративное видео", unit: "под ключ", price: "50 000–120 000 ₽" },
-      { title: "HR‑видео", unit: "под ключ", price: "25 000–65 000 ₽" },
-      { title: "Event‑фильм", unit: "съёмка мероприятий", price: "35 000–100 000 ₽" },
+      { title: "Имиджевый ролик", unit: "под ключ", price: "100 000-250 000 ₽" },
+      { title: "Корпоративное видео", unit: "под ключ", price: "50 000-120 000 ₽" },
+      { title: "HR-видео", unit: "под ключ", price: "25 000-65 000 ₽" },
+      { title: "Event-фильм", unit: "съёмка мероприятий", price: "35 000-100 000 ₽" },
     ],
   },
   {
     title: "CGI & Моушн",
     items: [
-      { title: "3D‑продуктовые рендеры", unit: "моделинг/свет/сцены", price: "25 000–85 000 ₽" },
-      { title: "Explainer video / Motion design", unit: "анимационные объясняющие ролики", price: "17 000–50 000 ₽" },
-      { title: "UI‑анимации / App‑видео", unit: "демонстрация интерфейсов", price: "10 000–35 000 ₽" },
-      { title: "Full CGI‑реклама", unit: "полностью 3D‑проект", price: "от 130 000 ₽" },
+      { title: "3D-продуктовые рендеры", unit: "моделинг/свет/сцены", price: "25 000-85 000 ₽" },
+      { title: "Explainer video / Motion design", unit: "анимационные объясняющие ролики", price: "17 000-50 000 ₽" },
+      { title: "UI-анимации / App-видео", unit: "демонстрация интерфейсов", price: "10 000-35 000 ₽" },
+      { title: "Full CGI-реклама", unit: "полностью 3D-проект", price: "от 130 000 ₽" },
     ],
   },
   {
     title: "Контент для соцсетей",
     items: [
       { title: "Вертикальные короткие видео (до 60 сек)", unit: "пакет", price: "10 000 ₽ / 5 шт." },
-      { title: "UGC‑постановка", unit: "реалистичный пользовательский контент", price: "20 000–80 000 ₽" },
-      { title: "Клипы для брендов", unit: "креатив + монтаж", price: "13 000–40 000 ₽" },
-      { title: "Пакет контента (5–10 видео)", unit: "под кампанию/месяц", price: "25 000–85 000 ₽" },
+      { title: "UGC-постановка", unit: "реалистичный пользовательский контент", price: "20 000-80 000 ₽" },
+      { title: "Клипы для брендов", unit: "креатив + монтаж", price: "13 000-40 000 ₽" },
+      { title: "Пакет контента (5-10 видео)", unit: "под кампанию/месяц", price: "25 000-85 000 ₽" },
     ],
   },
   {
     title: "Видеокейсы",
     items: [
-      { title: "Проектный видеокейс", unit: "история реализации", price: "25 000–65 000 ₽" },
-      { title: "Digital / Performance кейс", unit: "метрики, графика, аналитика", price: "35 000–85 000 ₽" },
-      { title: "Event / Activation кейс", unit: "репортаж + сторителлинг", price: "20 000–50 000 ₽" },
+      { title: "Проектный видеокейс", unit: "история реализации", price: "25 000-65 000 ₽" },
+      { title: "Digital / Performance кейс", unit: "метрики, графика, аналитика", price: "35 000-85 000 ₽" },
+      { title: "Event / Activation кейс", unit: "репортаж + сторителлинг", price: "20 000-50 000 ₽" },
     ],
   },
   {
@@ -72,37 +154,33 @@ const PRICE_GROUPS = [
     items: [
       { title: "Производство под ключ", unit: "креатив, сценарий, кастинг, съёмка, пост", price: "от 65 000 ₽" },
       { title: "Комплексная рекламная кампания", unit: "серия роликов, адаптации, права", price: "от 250 000 ₽" },
-      { title: "Пакет услуг (ежемесячно)", unit: "поддержка 5–10 видео", price: "от 50 000 ₽/мес" },
+      { title: "Пакет услуг (ежемесячно)", unit: "поддержка 5-10 видео", price: "от 50 000 ₽/мес" },
     ],
   },
   {
     title: "Доп. опции",
     items: [
       { title: "Кастинг актёров / модели", unit: "доп. опция", price: "от 3 000 ₽" },
-      { title: "Локации и продакшен‑дизайн", unit: "доп. опция", price: "от 8 000 ₽" },
+      { title: "Локации и продакшен-дизайн", unit: "доп. опция", price: "от 8 000 ₽" },
       { title: "Музыка / лицензии / права", unit: "доп. опция", price: "от 1 500 ₽" },
       { title: "Субтитры и адаптация", unit: "доп. опция", price: "от 800 ₽" },
-      { title: "Англоязычная версия", unit: "+ к стоимости", price: "+15–25%" },
+      { title: "Англоязычная версия", unit: "+ к стоимости", price: "+15-25%" },
     ],
   },
 ];
 
-// Плоский список для существующих проверок и альтернативных представлений
-const PRICE_ITEMS = PRICE_GROUPS.flatMap((g) => g.items.map((it) => ({ ...it, group: g.title })));
+const PRICE_ITEMS: (PriceItem & { group: string })[] = PRICE_GROUPS.flatMap((g) => g.items.map((it) => ({ ...it, group: g.title })));
 
 // -----------------------------
 // Lightweight validators (dev-only tests)
 // -----------------------------
+
 const validateNavLinks = (links: NavLink[]) =>
-  Array.isArray(links) &&
-  links.every((l) => Array.isArray(l) && l.length === 2 && typeof l[0] === "string" && typeof l[1] === "string");
+  Array.isArray(links) && links.every((l) => Array.isArray(l) && l.length === 2 && typeof l[0] === "string" && typeof l[1] === "string");
 
-type PriceItem = { title: string; unit: string; price: string };
 const validatePriceItems = (items: PriceItem[]) =>
-  Array.isArray(items) &&
-  items.every((it) => it && typeof it.title === "string" && typeof it.unit === "string" && typeof it.price === "string");
+  Array.isArray(items) && items.every((it) => it && typeof it.title === "string" && typeof it.unit === "string" && typeof it.price === "string");
 
-type PriceGroupT = { title: string; items: PriceItem[] };
 const validatePriceGroups = (groups: PriceGroupT[]) =>
   Array.isArray(groups) &&
   groups.length === 7 &&
@@ -110,19 +188,24 @@ const validatePriceGroups = (groups: PriceGroupT[]) =>
 
 if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
   console.assert(validateNavLinks(NAV_LINKS) === true, "[TEST] NAV_LINKS should be valid");
-  console.assert(validateNavLinks([ ["A", "#a"], ["B"] ] as unknown as NavLink[]) === false, "[TEST] invalid tuple length should fail");
-  console.assert(validateNavLinks([ ["A", 123] ] as unknown as NavLink[]) === false, "[TEST] non-string href should fail");
+  console.assert(validateNavLinks(([["A", "#a"], ["B"]] as unknown) as NavLink[]) === false, "[TEST] invalid tuple length should fail");
+  console.assert(validateNavLinks(([["A", 123]] as unknown) as NavLink[]) === false, "[TEST] non-string href should fail");
 
   console.assert(validatePriceItems(PRICE_ITEMS) === true, "[TEST] PRICE_ITEMS structure should be valid");
-  console.assert(validatePriceItems([ { title: "x", unit: 1 as unknown as string, price: "y" } ] as unknown as PriceItem[]) === false, "[TEST] non-string unit should fail");
-  console.assert(validatePriceItems([ { title: 1 as unknown as string, unit: "u", price: "p" } ] as unknown as PriceItem[]) === false, "[TEST] non-string title should fail");
+  console.assert(
+    validatePriceItems(([{ title: "x", unit: (1 as unknown) as string, price: "y" }] as unknown) as PriceItem[]) === false,
+    "[TEST] non-string unit should fail"
+  );
+  console.assert(
+    validatePriceItems(([{ title: (1 as unknown) as string, unit: "u", price: "p" }] as unknown) as PriceItem[]) === false,
+    "[TEST] non-string title should fail"
+  );
 
   console.assert(validatePriceGroups(PRICE_GROUPS) === true, "[TEST] PRICE_GROUPS should contain 7 valid groups");
   console.assert(
     validatePriceGroups([{ title: "A", items: [{ title: "x", unit: "u", price: "p" }] }]) === false,
     "[TEST] PRICE_GROUPS wrong length should fail"
   );
-  // extra sanity: каждая группа не пустая
   console.assert(PRICE_GROUPS.every((g) => g.items.length > 0), "[TEST] each price group should be non-empty");
 }
 
@@ -132,29 +215,19 @@ if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
 
 const container: Variants = {
   hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.15 },
-  },
+  show: { opacity: 1, transition: { staggerChildren: 0.15 } },
 };
 
 const item: Variants = {
   hidden: { opacity: 0, y: 12 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] }, // cubic-bezier easeOut
-  },
+  show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } },
 };
 
 const float: Variants = {
-  animate: {
-    y: [0, -6, 0],
-    transition: { duration: 4, repeat: Infinity, ease: [0.45, 0, 0.55, 1] }, // easeInOut cubic-bezier
-  },
+  animate: { y: [0, -6, 0], transition: { duration: 4, repeat: Infinity, ease: [0.45, 0, 0.55, 1] } },
 };
 
-// Soft cursor glow that follows the pointer (disabled on touch)
+// Soft cursor glow
 const CursorGlow: React.FC = () => {
   const [pos, setPos] = useState<{ x: number; y: number }>({ x: -200, y: -200 });
   const [enabled, setEnabled] = useState(true);
@@ -175,13 +248,19 @@ const CursorGlow: React.FC = () => {
     <motion.div
       aria-hidden
       className="pointer-events-none fixed z-0 h-48 w-48 rounded-full"
-      style={{ translateX: pos.x - 96, translateY: pos.y - 96, background: "radial-gradient(closest-side, rgba(99,102,241,0.24), rgba(236,72,153,0.18), transparent 70%)", filter: "blur(28px)" }}
+      style={{
+        translateX: pos.x - 96,
+        translateY: pos.y - 96,
+        background: "radial-gradient(closest-side, rgba(99,102,241,0.24), rgba(236,72,153,0.18), transparent 70%)",
+        filter: "blur(28px)",
+      }}
       transition={{ type: "spring", stiffness: 140, damping: 18, mass: 0.2 }}
     />
   );
 };
 
-// FAQ item component (lightweight accordion)
+// FAQ item component
+
 type FAQItemProps = { q: string; a: string; index: number };
 const FAQItem: React.FC<FAQItemProps> = ({ q, a, index }) => {
   const [open, setOpen] = useState(false);
@@ -189,7 +268,7 @@ const FAQItem: React.FC<FAQItemProps> = ({ q, a, index }) => {
     <motion.div initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.4 }}>
       <button onClick={() => setOpen(!open)} className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left">
         <span className="text-base font-medium text-white">{q}</span>
-        <motion.span animate={{ rotate: open ? 180 : 0 }} className="text-white/60">▾</motion.span>
+        <motion.span animate={{ rotate: open ? 180 : 0 }} className="text-white/60">▼</motion.span>
       </button>
       <motion.div initial={false} animate={{ height: open ? "auto" : 0, opacity: open ? 1 : 0 }} className="overflow-hidden px-5 pb-4 text-white/70">
         {a}
@@ -199,6 +278,7 @@ const FAQItem: React.FC<FAQItemProps> = ({ q, a, index }) => {
 };
 
 // Price group accordion
+
 type PriceGroupProps = { title: string; items: PriceItem[]; defaultOpen?: boolean };
 const PriceGroup: React.FC<PriceGroupProps> = ({ title, items, defaultOpen = false }) => {
   const [open, setOpen] = useState(defaultOpen);
@@ -206,11 +286,10 @@ const PriceGroup: React.FC<PriceGroupProps> = ({ title, items, defaultOpen = fal
     <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5">
       <button onClick={() => setOpen(!open)} className="flex w-full items-center justify-between px-4 py-4">
         <span className="text-base font-semibold text-white">{title}</span>
-        <motion.span animate={{ rotate: open ? 180 : 0 }} className="text-white/60">▾</motion.span>
+        <motion.span animate={{ rotate: open ? 180 : 0 }} className="text-white/60">▼</motion.span>
       </button>
       <motion.div initial={false} animate={{ height: open ? "auto" : 0, opacity: open ? 1 : 0 }} className="overflow-hidden">
         <div className="grid grid-cols-1 divide-y divide-white/10">
-          {/* header row on md+ */}
           <div className="hidden md:grid grid-cols-[minmax(220px,1.2fr)_minmax(200px,1fr)_minmax(140px,0.6fr)] bg-white/5 text-white/60 text-xs uppercase tracking-wide">
             <div className="px-4 py-3">Услуга</div>
             <div className="px-4 py-3">Описание</div>
@@ -229,8 +308,54 @@ const PriceGroup: React.FC<PriceGroupProps> = ({ title, items, defaultOpen = fal
   );
 };
 
+// Works (video cases)
+
+type WorkItem = {
+  title: string;
+  href: string;
+  poster: string;
+  srcMp41080: string;
+  srcMp4720: string;
+  srcHevc1080?: string;
+  srcWebm?: string;
+};
+
+const WORKS: WorkItem[] = [
+  {
+    title: "Brand Film — Aurora",
+    href: "#",
+    poster: "/work/aurora/poster.jpg",
+    srcHevc1080: "/work/aurora/1080p-h265.mp4",
+    srcMp41080: "/work/aurora/1080p.mp4",
+    srcMp4720: "/work/aurora/720p.mp4",
+    srcWebm: "/work/aurora/1080p.webm",
+  },
+  {
+    title: "Product Ad — Nova",
+    href: "#",
+    poster: "/work/nova/poster.jpg",
+    srcHevc1080: "/work/nova/1080p-h265.mp4",
+    srcMp41080: "/work/nova/1080p.mp4",
+    srcMp4720: "/work/nova/720p.mp4",
+    srcWebm: "/work/nova/1080p.webm",
+  },
+  {
+    title: "Event Recap — Pulse",
+    href: "#",
+    poster: "/work/pulse/poster.jpg",
+    srcHevc1080: "/work/pulse/1080p-h265.mp4",
+    srcMp41080: "/work/pulse/1080p.mp4",
+    srcMp4720: "/work/pulse/720p.mp4",
+    srcWebm: "/work/pulse/1080p.webm",
+  },
+];
+
+// -----------------------------
+// Page
+// -----------------------------
+
 export default function HighLevelVideoLanding() {
-  // ---- Brief form state & send-to-email ----
+  // Brief form state & send-to-email
   const [form, setForm] = useState({ name: "", company: "", email: "", phone: "", message: "" });
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState<null | "ok" | "fail">(null);
@@ -255,12 +380,13 @@ export default function HighLevelVideoLanding() {
       setSubmitting(false);
     }
   };
+
   return (
     <div className="min-h-screen bg-black text-white selection:bg-white/80 selection:text-black overflow-x-hidden scroll-smooth">
-      {/* Noise / gradient background */}
+      {/* Background */}
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div className="absolute inset-0 bg-[radial-gradient(60%_40%_at_50%_-10%,rgba(120,119,198,0.35),rgba(255,255,255,0)_70%),radial-gradient(50%_50%_at_110%_10%,rgba(56,189,248,0.25),rgba(255,255,255,0)_70%),radial-gradient(50%_50%_at_-10%_90%,rgba(244,63,94,0.25),rgba(255,255,255,0)_70%)]" />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.12]" />
+        {/* шумовую подложку убрали, чтобы избежать проблем парсера в некоторых сборках */}
       </div>
       <CursorGlow />
 
@@ -305,14 +431,7 @@ export default function HighLevelVideoLanding() {
               </Button>
             </motion.div>
             <motion.div variants={item} className="mt-8 flex flex-wrap gap-6 text-sm text-white/60">
-              {[
-                "Стратегия",
-                "Продакшен",
-                "Съёмка",
-                "Постпродакшн",
-                "3D/CGI",
-                "Моушн-дизайн",
-              ].map((t) => (
+              {["Стратегия", "Продакшен", "Съёмка", "Постпродакшн", "3D/CGI", "Моушн-дизайн"].map((t) => (
                 <div key={t} className="flex items-center gap-2">
                   <Check className="h-4 w-4" /> {t}
                 </div>
@@ -325,18 +444,14 @@ export default function HighLevelVideoLanding() {
             <Card className="overflow-hidden rounded-3xl border-white/10 bg-white/5">
               <CardContent className="p-0">
                 <div className="relative aspect-video w-full">
-                  <video
+                  <VideoSmart
                     className="h-full w-full object-cover"
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                    poster="/hero-poster.jpg"
-                  >
-                    <source src="/reel.webm" type="video/webm" />
-                    <source src="/reel.mp4" type="video/mp4" />
-                    Ваш браузер не поддерживает видео.
-                  </video>
+                    poster="/hero/poster.jpg"
+                    srcHevc1080="/reel-1080p-h265.mp4"
+                    srcMp41080="/reel-1080p.mp4"
+                    srcMp4720="/reel-720p.mp4"
+                    srcWebm="/reel.webm"
+                  />
                   <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
                   <div className="absolute bottom-4 left-4 flex items-center gap-3">
                     <div className="rounded-full bg-white/90 p-2 text-black"><Play className="h-4 w-4" /></div>
@@ -349,17 +464,10 @@ export default function HighLevelVideoLanding() {
         </div>
       </header>
 
-      {/* Logos / social proof */}
+      {/* Logos */}
       <section className="border-y border-white/10 bg-white/5 py-8">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-10 px-4 opacity-80">
-          {[
-            "Яндекс",
-            "Сбер",
-            "Avito",
-            "Gazprom",
-            "VK",
-            "Wildberries",
-          ].map((brand) => (
+          {["Яндекс", "Сбер", "Avito", "Gazprom", "VK", "Wildberries"].map((brand) => (
             <div key={brand} className="text-sm uppercase tracking-widest text-white/60">{brand}</div>
           ))}
         </div>
@@ -369,41 +477,15 @@ export default function HighLevelVideoLanding() {
       <section id="services" className="mx-auto max-w-7xl px-4 py-20">
         <motion.div initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={container}>
           <motion.h2 variants={item} className="text-white text-3xl font-semibold md:text-4xl">Услуги</motion.h2>
-          <motion.p variants={item} className="mt-3 max-w-[60ch] text-white/70">
-            От идеи до релиза: берём на себя весь цикл — ресёрч, креатив, препродакшн, производство и пост.
-          </motion.p>
+          <motion.p variants={item} className="mt-3 max-w-[60ch] text-white/70">От идеи до релиза: берём на себя весь цикл — ресёрч, креатив, препродакшн, производство и пост.</motion.p>
           <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3">
             {[
-              {
-                icon: <Camera className="h-5 w-5" />,
-                title: "Рекламные ролики",
-                text: "ТВ/OLV кампании, перформанс-креативы, вертикальные форматы.",
-              },
-              {
-                icon: <Film className="h-5 w-5" />,
-                title: "Бренд-видео",
-                text: "Имиджевые, корпоративные, HR и event-фильмы.",
-              },
-              {
-                icon: <Sparkles className="h-5 w-5" />,
-                title: "CGI & Моушн",
-                text: "3D, product renders, объясняющие и UI-анимации.",
-              },
-              {
-                icon: <Play className="h-5 w-5" />,
-                title: "Контент для соцсетей",
-                text: "Вертикальные короткие форматы, клипы, UGC-постановка.",
-              },
-              {
-                icon: <ArrowRight className="h-5 w-5" />,
-                title: "Видеокейсы",
-                text: "Истории проектов с метриками, инсайтами и результатами.",
-              },
-              {
-                icon: <Check className="h-5 w-5" />,
-                title: "Под ключ",
-                text: "Креатив, продакшен, кастинг, локации, лицензии, права.",
-              },
+              { icon: <Camera className="h-5 w-5" />, title: "Рекламные ролики", text: "ТВ/OLV кампании, перформанс-креативы, вертикальные форматы." },
+              { icon: <Film className="h-5 w-5" />, title: "Бренд-видео", text: "Имиджевые, корпоративные, HR и event-фильмы." },
+              { icon: <Sparkles className="h-5 w-5" />, title: "CGI & Моушн", text: "3D, product renders, объясняющие и UI-анимации." },
+              { icon: <Play className="h-5 w-5" />, title: "Контент для соцсетей", text: "Вертикальные короткие форматы, клипы, UGC-постановка." },
+              { icon: <ArrowRight className="h-5 w-5" />, title: "Видеокейсы", text: "Истории проектов с метриками, инсайтами и результатами." },
+              { icon: <Check className="h-5 w-5" />, title: "Под ключ", text: "Креатив, продакшен, кастинг, локации, лицензии, права." },
             ].map((s) => (
               <Card key={s.title} className="group border-white/10 bg-white/5 hover:bg-white/10 transform-gpu transition duration-300 hover:-translate-y-1">
                 <CardContent className="p-6">
@@ -426,8 +508,6 @@ export default function HighLevelVideoLanding() {
         <motion.div initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={container}>
           <motion.h2 variants={item} className="text-white text-3xl font-semibold md:text-4xl">Прайс-лист</motion.h2>
           <motion.p variants={item} className="mt-3 max-w-[60ch] text-white/70">Базовые ориентиры по стоимости. Точная смета формируется после брифа.</motion.p>
-
-          {/* Grouped pricing (7 списков) */}
           <div className="mt-10 space-y-4">
             {PRICE_GROUPS.map((g, i) => (
               <PriceGroup key={g.title} title={`${i + 1 < 10 ? "0" : ""}${i + 1}. ${g.title}`} items={g.items} defaultOpen={i === 0} />
@@ -437,29 +517,22 @@ export default function HighLevelVideoLanding() {
         </motion.div>
       </section>
 
-      {/* Reel / Work */}
+      {/* Work */}
       <section id="work" className="mx-auto max-w-7xl px-4 py-20">
         <motion.div initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={container}>
           <motion.h2 variants={item} className="text-white text-3xl font-semibold md:text-4xl">Работы</motion.h2>
           <motion.p variants={item} className="mt-3 max-w-[60ch] text-white/70">Подборка последних проектов. Замените ссылки на свои.</motion.p>
           <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3">
-            {[
-              { title: "Brand Film — Aurora", href: "#", src: "/work/aurora.webm", poster: "/work/aurora.jpg" },
-              { title: "Product Ad — Nova",   href: "#", src: "/work/nova.webm",   poster: "/work/nova.jpg" },
-              { title: "Event Recap — Pulse", href: "#", src: "/work/pulse.webm",  poster: "/work/pulse.jpg" },
-            ].map((w) => (
+            {WORKS.map((w) => (
               <a key={w.title} href={w.href} className="group relative block overflow-hidden rounded-3xl border border-white/10 bg-white/5 text-white transform-gpu transition duration-300 hover:-translate-y-1">
-                <video
-                className="aspect-video w-full object-cover transition duration-500 group-hover:scale-105"
-                autoPlay
-                muted
-                loop
-                playsInline
-                preload="metadata"
-                poster={w.poster}
-              >
-                <source src={w.src} type="video/webm" />
-              </video>
+                <VideoSmart
+                  className="aspect-video w-full object-cover transition duration-500 group-hover:scale-105"
+                  poster={w.poster}
+                  srcHevc1080={w.srcHevc1080}
+                  srcMp41080={w.srcMp41080}
+                  srcMp4720={w.srcMp4720}
+                  srcWebm={w.srcWebm}
+                />
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 p-5">
                   <div className="flex items-center justify-between">
@@ -486,7 +559,7 @@ export default function HighLevelVideoLanding() {
               { step: "02", title: "Креатив", text: "Идеи, референсы, скрипт, раскадровка." },
               { step: "03", title: "Продакшен", text: "Съёмка, свет, звук, продюсирование." },
               { step: "04", title: "Пост", text: "Монтаж, цвет, звук, графика, сдача." },
-            ].map((p, i) => (
+            ].map((p) => (
               <Card key={p.step} className="border-white/10 bg-white/5 transform-gpu transition duration-300 hover:-translate-y-1">
                 <CardContent className="p-6">
                   <div className="text-sm text-white/50">{p.step}</div>
@@ -505,16 +578,9 @@ export default function HighLevelVideoLanding() {
           <motion.h2 variants={item} className="text-white text-3xl font-semibold md:text-4xl">О нас</motion.h2>
           <div className="mt-8 grid grid-cols-1 items-center gap-10 md:grid-cols-3">
             <div className="md:col-span-2">
-              <p className="text-white/70 md:text-lg">
-                High Level Video — команда продюсеров, режиссёров и креативных, которая делает видео, решающее бизнес-задачи. Мы за скорость, качество и кристальную коммуникацию.
-              </p>
+              <p className="text-white/70 md:text-lg">High Level Video — команда продюсеров, режиссёров и креативных, которая делает видео, решающее бизнес-задачи. Мы за скорость, качество и кристальную коммуникацию.</p>
               <div className="mt-6 grid grid-cols-2 gap-4 md:max-w-lg">
-                {[
-                  ["50+", "реализованных проектов"],
-                  ["12", "постоянных специалистов"],
-                  ["24/7", "сопровождение запусков"],
-                  ["A+", "оценка клиентов"],
-                ].map(([n, l]) => (
+                {[["50+", "реализованных проектов"], ["12", "постоянных специалистов"], ["24/7", "сопровождение запусков"], ["A+", "оценка клиентов"]].map(([n, l]) => (
                   <Card key={l} className="border-white/10 bg-white/5 transform-gpu transition duration-300 hover:-translate-y-1">
                     <CardContent className="p-4">
                       <div className="text-2xl font-semibold text-white">{n}</div>
@@ -527,11 +593,11 @@ export default function HighLevelVideoLanding() {
             <div>
               <Card className="overflow-hidden border-white/10 bg-white/5">
                 <CardContent className="p-0">
-                  <img
-                    src="https://images.unsplash.com/photo-1542144582-1ba00456b5e3?q=80&w=1960&auto=format&fit=crop"
-                    alt="Production"
-                    className="h-full w-full object-cover"
-                  />
+                  <picture>
+                    <source srcSet="/about/poster.png" type="image/png" />
+                    <source srcSet="/about/poster.png" type="image/png" />
+                    <img src="/about/poster.jpg" alt="High Level Video — команда" className="h-full w-full object-cover" />
+                  </picture>
                 </CardContent>
               </Card>
             </div>
@@ -544,15 +610,14 @@ export default function HighLevelVideoLanding() {
         <motion.div initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={container}>
           <motion.h2 variants={item} className="text-white text-3xl font-semibold md:text-4xl">FAQ</motion.h2>
           <motion.p variants={item} className="mt-3 max-w-[60ch] text-white/70">Частые вопросы и короткие ответы. Если не нашли нужное — напишите нам, ответим в течение дня.</motion.p>
-
           <div className="mt-8 divide-y divide-white/10 rounded-3xl border border-white/10 bg-white/5">
             {[
-              {q: "Сроки производства?", a: "От 5–7 дней для рилс/шортс до 2–4 недель для корпоративных роликов. Точный тайминг зависит от кастинга, локаций и графики."},
-              {q: "Сколько правок включено?", a: "Стандартно: 2 круга правок на монтаж и 1 круг на графику. Можно расширить по брифу."},
-              {q: "Вы отдаёте исходники?", a: "По умолчанию — финальные материалы. Исходники можем выгрузить по запросу, это отдельная опция."},
-              {q: "Какой порядок оплаты?", a: "Обычно 50% предоплата, 50% — по сдаче. Для постоянных клиентов возможны иные условия."},
-              {q: "Поможете с идеей и сценарием?", a: "Да. Креатив и сценарий можем сделать под задачу и целевую аудиторию, предложим референсы."},
-              {q: "Работаете удалённо/в регионах?", a: "Да, снимаем в Москве и по миру. Организация экспедиции и локальных команд — наша зона ответственности."},
+              { q: "Сроки производства?", a: "От 5-7 дней для рилс/шортс до 2-4 недель для корпоративных роликов. Точный тайминг зависит от кастинга, локаций и графики." },
+              { q: "Сколько правок включено?", a: "Стандартно: 2 круга правок на монтаж и 1 круг на графику. Можно расширить по брифу." },
+              { q: "Вы отдаёте исходники?", a: "По умолчанию — финальные материалы. Исходники можем выгрузить по запросу, это отдельная опция." },
+              { q: "Какой порядок оплаты?", a: "Обычно 50% предоплата, 50% — по сдаче. Для постоянных клиентов возможны иные условия." },
+              { q: "Поможете с идеей и сценарием?", a: "Да. Креатив и сценарий можем сделать под задачу и целевую аудиторию, предложим референсы." },
+              { q: "Работаете удалённо/в регионах?", a: "Да, снимаем в Москве и по миру. Организация экспедиции и локальных команд — наша зона ответственности." },
             ].map((it, idx) => (
               <FAQItem key={it.q} index={idx} q={it.q} a={it.a} />
             ))}
@@ -575,7 +640,7 @@ export default function HighLevelVideoLanding() {
                 <textarea name="message" value={form.message} onChange={onChange} className="md:col-span-2 h-28 rounded-xl border border-white/15 bg-black/40 p-3 outline-none text-white caret-white placeholder:text-white/60 focus:ring-2 focus:ring-white/20" placeholder="Коротко о задаче" />
                 <Button type="submit" disabled={submitting} className="md:col-span-2 rounded-2xl bg-white text-black hover:bg-white/90">{submitting ? "Отправка..." : "Отправить"}</Button>
                 {sent === "ok" && <div className="md:col-span-2 text-sm text-emerald-400">Отправлено! Мы свяжемся с вами в течение суток.</div>}
-                {sent === "fail" && <div className="md:col-span-2 text-sm text-red-400">Не удалось отправить. Попробуйте ещё раз или напишите на hello@highlevel.video</div>}
+                {sent === "fail" && <div className="md:col-span-2 text-sm text-red-400">Не удалось отправить. Попробуйте ещё раз или напишите на cormarketinq@yandex.ru</div>}
               </form>
             </CardContent>
           </Card>
@@ -584,13 +649,15 @@ export default function HighLevelVideoLanding() {
               <div className="text-sm uppercase tracking-wide text-white/70">Контакты</div>
               <div className="mt-4 space-y-3 text-white/80">
                 <a href="mailto:cormarketinq@yandex.ru" className="flex items-center gap-2 text-white hover:text-white"><Mail className="h-4 w-4" /> cormarketinq@yandex.ru</a>
-                <a href="tel:+79267943537" className="flex items-center gap-2 text-white hover:text-white"><Phone className="h-4 w-4" /> +7 926 794-35-37</a>
-                <a href="#" className="flex items-center gap-2 text-white hover:text-white"><Instagram className="h-4 w-4" /> Instagram</a>
-                <a href="#" className="flex items-center gap-2 text-white hover:text-white"><Youtube className="h-4 w-4" /> YouTube</a>
+                <a href="tel:+79267943537" className="flex items-center gap-2 text-white hover:text-white"><Phone className="h-4 w-4" /> +7 926 794-35-37</a>
+                {SHOW_SOCIALS && (
+                  <>
+                    <a href="#" className="flex items-center gap-2 text-white hover:text-white"><Instagram className="h-4 w-4" /> Instagram</a>
+                    <a href="#" className="flex items-center gap-2 text-white hover:text-white"><Youtube className="h-4 w-4" /> YouTube</a>
+                  </>
+                )}
               </div>
-              <div className="mt-6 text-sm text-white/60">
-                Москва · Работаем по миру
-              </div>
+              <div className="mt-6 text-sm text-white/60">Москва · Работаем по миру</div>
             </CardContent>
           </Card>
         </div>
