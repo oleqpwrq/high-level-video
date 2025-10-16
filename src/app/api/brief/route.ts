@@ -1,4 +1,5 @@
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
@@ -6,7 +7,7 @@ import { Resend } from "resend";
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // получатель и адрес отправителя
-const MAIL_TO = process.env.MAIL_TO || "cormarketinq@yandex.ru";
+const MAIL_TO = process.env.MAIL_TO || "oleq.prok@yandex.ru";
 const MAIL_FROM = process.env.MAIL_FROM || "High Level Video <no-reply@highlevel.video>";
 
 export async function POST(req: Request) {
