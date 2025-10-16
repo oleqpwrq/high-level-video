@@ -24,6 +24,12 @@ type VideoSmartProps = {
   mobilePrefer720?: boolean;
   /** Ограничить автоплей на мобилках/медленной сети */
   limitAutoplayOnMobile?: boolean;
+  /** Если постер не задан – сгенерировать из первого кадра */
+  autoPoster?: boolean;
+  /** Ручной постер (если вдруг нужен) */
+  poster?: string;
+  /** На какой секунде брать кадр для постера */
+  posterTime?: number;
 };
 
 function VideoSmart({
@@ -37,33 +43,16 @@ function VideoSmart({
   muted = true,
   mobilePrefer720 = true,
   limitAutoplayOnMobile = true,
+  autoPoster = false,
+  poster,
+  posterTime = 0.2,
 }: VideoSmartProps) {
   const ref = useRef<HTMLVideoElement | null>(null);
-  const [shouldAutoplay, setShouldAutoplay] = useState<boolean>(autoPlay);
-  const [preloadMode, setPreloadMode] = useState<"none" | "metadata">("none");
+const [shouldAutoplay, setShouldAutoplay] = useState<boolean>(autoPlay);
+const [preloadMode, setPreloadMode] = useState<"none" | "metadata">("none");
+const [posterUrl, setPosterUrl] = useState<string | undefined>(poster);
 
   // Решаем, как вести себя на мобилке/медленной сети
-  useEffect(() => {
-    const isMobile = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(max-width: 768px)").matches;
-
-    type NetInfo = { saveData?: boolean; effectiveType?: string };
-    const conn: NetInfo | undefined =
-      typeof navigator !== "undefined" && "connection" in navigator
-        ? (navigator as unknown as Navigator & { connection?: NetInfo }).connection
-        : undefined;
-
-    const saveData = !!conn?.saveData;
-    const slow = conn?.effectiveType === "slow-2g" || conn?.effectiveType === "2g";
-
-    if (limitAutoplayOnMobile && (isMobile || saveData || slow)) {
-      setShouldAutoplay(false); // на мобилках — без автоплея для экономии трафика
-      setPreloadMode("metadata");
-    } else {
-      setShouldAutoplay(autoPlay);
-      setPreloadMode("none");
-    }
-  }, [autoPlay, limitAutoplayOnMobile]);
-
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -91,6 +80,62 @@ function VideoSmart({
     return () => void 0;
   }, [shouldAutoplay, preloadMode]);
 
+  // Автогенерация постера из первого кадра (без отдельного файла)
+  useEffect(() => {
+    if (!autoPoster || poster || posterUrl) return;
+    const target = ref.current;
+    if (!target) return;
+
+    // Выбираем лёгкий источник для скриншота
+    const src = mobilePrefer720 ? srcMp4720 : (srcHevc1080 || srcMp41080);
+    if (!src) return;
+
+    let canceled = false;
+    const tempVideo = document.createElement("video");
+    tempVideo.crossOrigin = "anonymous"; // тот же origin – ок; на CDN может потребоваться CORS
+    tempVideo.preload = "auto";
+    tempVideo.src = src;
+    tempVideo.muted = true;
+    tempVideo.playsInline = true;
+
+    const toPoster = async () => {
+      try {
+        // Ждём метаданные → выставим время → ждём seeked
+        await new Promise<void>((res) => {
+          if (tempVideo.readyState >= 1) return res();
+          tempVideo.addEventListener("loadedmetadata", () => res(), { once: true });
+        });
+        tempVideo.currentTime = Math.max(0.001, posterTime);
+        await new Promise<void>((res) => tempVideo.addEventListener("seeked", () => res(), { once: true }));
+
+        const w = tempVideo.videoWidth || 1280;
+        const h = tempVideo.videoHeight || 720;
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.drawImage(tempVideo, 0, 0, w, h);
+        let data = "";
+        try {
+          data = canvas.toDataURL("image/webp", 0.82);
+        } catch {
+          data = canvas.toDataURL("image/png");
+        }
+        if (!canceled && data) {
+          setPosterUrl(data);
+          // Мгновенно применим постер к реальному видео
+          if (ref.current) {
+            (ref.current as HTMLVideoElement).poster = data;
+          }
+        }
+      } catch {}
+    };
+
+    toPoster();
+    return () => { canceled = true; tempVideo.src = ""; };
+  }, [autoPoster, poster, posterUrl, posterTime, mobilePrefer720, srcMp4720, srcHevc1080, srcMp41080]);
+
   return (
     <video
       ref={ref}
@@ -101,6 +146,7 @@ function VideoSmart({
       autoPlay={shouldAutoplay}
       preload={preloadMode}
       disablePictureInPicture
+      poster={posterUrl}
       controls={false}
     >
       {/* Сначала более лёгкий источник для мобилок */}
@@ -512,7 +558,9 @@ export default function HighLevelVideoLanding() {
                       srcMp4720="/reel-720p.mp4"
                       srcWebm="/reel.webm"
                       mobilePrefer720
-                      limitAutoplayOnMobile={false} // у шоурила автоплей всегда
+                      limitAutoplayOnMobile={false}
+                      autoPoster
+                      posterTime={0.3}
                     />
                     <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
                     <div className="absolute bottom-4 left-4 flex items-center gap-3">
@@ -641,7 +689,7 @@ export default function HighLevelVideoLanding() {
             <motion.h2 variants={item} className="text-white text-3xl font-semibold md:text-4xl">О нас</motion.h2>
             <div className="mt-8 grid grid-cols-1 items-center gap-10 md:grid-cols-3">
               <div className="md:col-span-2">
-                <p className="text-white/70 md:text-lg">High Level Video — команда продюсеров, режиссёров и креативных специалистов, которая создает видео, решающее бизнес-задачи и не только. Мы за скорость, качество и кристальную коммуникацию.</p>
+                <p className="text-white/70 md:text-lg">High Level Video — команда продюсеров, режиссёров и креативных специалистов, которая создаёт видео, решающее бизнес‑задачи и не только. Мы за скорость, качество и кристальную коммуникацию.</p>
                 <div className="mt-6 grid grid-cols-2 gap-4 md:max-w-lg">
                   {[ ["50+", "реализованных проектов"], ["12", "постоянных специалистов"], ["24/7", "сопровождение запусков"], ["A+", "оценка клиентов"] ].map(([n, l]) => (
                     <Card key={l} className="border-white/10 bg-white/5 transform-gpu transition duration-300 hover:-translate-y-1">
